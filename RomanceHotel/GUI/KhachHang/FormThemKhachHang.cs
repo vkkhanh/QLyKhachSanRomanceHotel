@@ -1,0 +1,360 @@
+﻿using RomanceHotel.BUS;
+using RomanceHotel.DAO;
+using RomanceHotel.DTO;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using ApplicationSettings;
+using RomanceHotel.CTControls;
+using System.Text.RegularExpressions;   // THÊM DÒNG NÀY
+
+namespace RomanceHotel.GUI
+{
+    public partial class FormThemKhachHang : Form
+    {
+        //Fields
+        private int borderRadius = 20;
+        private int borderSize = 2;
+        private Color borderColor = Color.White;
+        FormDanhSachKhachHang formDanhSachKhachHang;
+
+        //Constructor
+        public FormThemKhachHang()
+        {
+            this.DoubleBuffered = true;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.Padding = new Padding(borderSize);
+            InitializeComponent();
+        }
+        public FormThemKhachHang(FormDanhSachKhachHang formDanhSachKhachHang)
+        {
+            this.DoubleBuffered = true;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.Padding = new Padding(borderSize);
+            this.formDanhSachKhachHang = formDanhSachKhachHang;
+            InitializeComponent();
+        }
+
+        //Control Box
+
+        //Form Move
+
+        //Drag Form
+        [DllImport("user32.DLL", EntryPoint = "ReleaseCapture")]
+        private extern static void ReleaseCapture();
+        [DllImport("user32.DLL", EntryPoint = "SendMessage")]
+        private extern static void SendMessage(System.IntPtr hWnd, int wMsg, int wParam, int lParam);
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= 0x20000; // <--- Minimize borderless form from taskbar
+                return cp;
+            }
+        }
+
+        //Private Methods
+        //Private Methods
+        private GraphicsPath GetRoundedPath(Rectangle rect, float radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            float curveSize = radius * 2F;
+            path.StartFigure();
+
+            // Góc trên trái
+            path.AddArc(rect.X, rect.Y, curveSize, curveSize, 180, 90);
+            // Góc trên phải
+            path.AddArc(rect.Right - curveSize, rect.Y, curveSize, curveSize, 270, 90);
+            // Góc dưới phải
+            path.AddArc(rect.Right - curveSize, rect.Bottom - curveSize, curveSize, curveSize, 0, 90);
+            // Góc dưới trái
+            path.AddArc(rect.X, rect.Bottom - curveSize, curveSize, curveSize, 90, 90);
+
+            path.CloseFigure();
+            return path;
+        }
+
+        private void ControlRegionAndBorder(Control control, float radius, Graphics graph, Color borderColor)
+        {
+            using (GraphicsPath roundPath = GetRoundedPath(control.ClientRectangle, radius))
+            using (Pen penBorder = new Pen(borderColor, 1))
+            {
+                graph.SmoothingMode = SmoothingMode.AntiAlias;
+                control.Region = new Region(roundPath);
+                graph.DrawPath(penBorder, roundPath);
+            }
+        }
+        private void FormRegionAndBorder(Form form, float radius, Graphics graph, Color borderColor, float borderSize)
+        {
+            if (this.WindowState != FormWindowState.Minimized)
+            {
+                using (GraphicsPath roundPath = GetRoundedPath(form.ClientRectangle, radius))
+                using (Pen penBorder = new Pen(borderColor, borderSize))
+                using (Matrix transform = new Matrix())
+                {
+                    graph.SmoothingMode = SmoothingMode.AntiAlias;
+                    form.Region = new Region(roundPath);
+                    if (borderSize >= 1)
+                    {
+                        Rectangle rect = form.ClientRectangle;
+                        float scaleX = 1.0F - ((borderSize + 1) / rect.Width);
+                        float scaleY = 1.0F - ((borderSize + 1) / rect.Height);
+                        transform.Scale(scaleX, scaleY);
+                        transform.Translate(borderSize / 1.6F, borderSize / 1.6F);
+                        graph.Transform = transform;
+                        graph.DrawPath(penBorder, roundPath);
+                    }
+                }
+            }
+        }
+        private void DrawPath(Rectangle rect, Graphics graph, Color color)
+        {
+            using (GraphicsPath roundPath = GetRoundedPath(rect, borderRadius))
+            using (Pen penBorder = new Pen(color, 3))
+            {
+                graph.DrawPath(penBorder, roundPath);
+            }
+        }
+        private struct FormBoundsColors
+        {
+            public Color TopLeftColor;
+            public Color TopRightColor;
+            public Color BottomLeftColor;
+            public Color BottomRightColor;
+        }
+        private FormBoundsColors GetFormBoundsColors()
+        {
+            var fbColor = new FormBoundsColors();
+            using (var bmp = new Bitmap(1, 1))
+            using (Graphics graph = Graphics.FromImage(bmp))
+            {
+                Rectangle rectBmp = new Rectangle(0, 0, 1, 1);
+                //Top Left
+                rectBmp.X = this.Bounds.X - 1;
+                rectBmp.Y = this.Bounds.Y;
+                graph.CopyFromScreen(rectBmp.Location, Point.Empty, rectBmp.Size);
+                fbColor.TopLeftColor = bmp.GetPixel(0, 0);
+                //Top Right
+                rectBmp.X = this.Bounds.Right;
+                rectBmp.Y = this.Bounds.Y;
+                graph.CopyFromScreen(rectBmp.Location, Point.Empty, rectBmp.Size);
+                fbColor.TopRightColor = bmp.GetPixel(0, 0);
+                //Bottom Left
+                rectBmp.X = this.Bounds.X;
+                rectBmp.Y = this.Bounds.Bottom;
+                graph.CopyFromScreen(rectBmp.Location, Point.Empty, rectBmp.Size);
+                fbColor.BottomLeftColor = bmp.GetPixel(0, 0);
+                //Bottom Right
+                rectBmp.X = this.Bounds.Right;
+                rectBmp.Y = this.Bounds.Bottom;
+                graph.CopyFromScreen(rectBmp.Location, Point.Empty, rectBmp.Size);
+                fbColor.BottomRightColor = bmp.GetPixel(0, 0);
+            }
+            return fbColor;
+        }
+        private FormBoundsColors GetSameDark()
+        {
+            FormBoundsColors colors = new FormBoundsColors();
+            colors.TopLeftColor = Color.FromArgb(67, 73, 73);
+            colors.TopRightColor = Color.FromArgb(67, 73, 73);
+            colors.BottomLeftColor = Color.FromArgb(67, 73, 73);
+            colors.BottomRightColor = Color.FromArgb(67, 73, 73);
+            return colors;
+        }
+        //Event Methods
+        private void FormThemKhachHang_Paint(object sender, PaintEventArgs e)
+        {
+            //-> SMOOTH OUTER BORDER
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            Rectangle rectForm = this.ClientRectangle;
+            int mWidht = rectForm.Width / 2;
+            int mHeight = rectForm.Height / 2;
+            var fbColors = GetSameDark();
+            //Top Left
+            DrawPath(rectForm, e.Graphics, fbColors.TopLeftColor);
+            //Top Right
+            Rectangle rectTopRight = new Rectangle(mWidht, rectForm.Y, mWidht, mHeight);
+            DrawPath(rectTopRight, e.Graphics, fbColors.TopRightColor);
+            //Bottom Left
+            Rectangle rectBottomLeft = new Rectangle(rectForm.X, rectForm.X + mHeight, mWidht, mHeight);
+            DrawPath(rectBottomLeft, e.Graphics, fbColors.BottomLeftColor);
+            //Bottom Right
+            Rectangle rectBottomRight = new Rectangle(mWidht, rectForm.Y + mHeight, mWidht, mHeight);
+            DrawPath(rectBottomRight, e.Graphics, fbColors.BottomRightColor);
+            //-> SET ROUNDED REGION AND BORDER
+            FormRegionAndBorder(this, borderRadius, e.Graphics, borderColor, borderSize);
+        }
+        private void FormThemKhachHang_Resize(object sender, EventArgs e)
+        {
+            this.Invalidate();
+        }
+
+        private void FormThemKhachHang_SizeChanged(object sender, EventArgs e)
+        {
+            this.Invalidate();
+        }
+
+        private void FormThemKhachHang_Activated(object sender, EventArgs e)
+        {
+            this.Invalidate();
+        }
+
+        private void PanelBackground_Paint(object sender, PaintEventArgs e)
+        {
+            ControlRegionAndBorder(PanelBackground, borderRadius - (borderSize / 2), e.Graphics, borderColor);
+        }
+
+        private void PanelBackground_MouseDown(object sender, MouseEventArgs e)
+        {
+            ReleaseCapture();
+            SendMessage(this.Handle, 0x112, 0xf012, 0);
+        }
+        private void CTButtonThoat_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void CTButtonCapNhat_Click(object sender, EventArgs e)
+        {
+            // Lấy trước các giá trị
+            string ten = ctTextBoxName.Texts;
+            string quocTich = ctTextBoxQuocTich.Texts;
+            string cccd = ctTextBoxCMND.Texts;
+            string sdt = ctTextBoxSDT.Texts;
+            string gioiTinh = comboBoxGioiTinh.Texts;
+            string email = ctTextBoxEmail.Texts.Trim();   // THÊM EMAIL
+
+            if (ten != "" && quocTich != "" && cccd != "" && sdt != "" &&
+                email != "" && gioiTinh != "  Giới tính")
+            {
+                if (cccd.Length != 12 && cccd.Length != 7)
+                {
+                    CTMessageBox.Show("Vui lòng nhập đầy đủ số CCCD/Passport.", "Thông báo",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                if (sdt.Length != 10)
+                {
+                    CTMessageBox.Show("Vui lòng nhập đầy đủ SĐT.", "Thông báo",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                // KIỂM TRA ĐỊNH DẠNG EMAIL
+                string patternEmail = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
+                Regex regexEmail = new Regex(patternEmail);
+                if (!regexEmail.IsMatch(email))
+                {
+                    CTMessageBox.Show("Vui lòng nhập đúng định dạng Email.", "Thông báo",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                List<KhachHang> khachHangs = KhachHangBUS.Instance.GetKhachHangs();
+                foreach (KhachHang khachHang in khachHangs)
+                {
+                    if (khachHang.CCCD_Passport == cccd)
+                    {
+                        CTMessageBox.Show("Đã tồn tại số CCCD/Passport này trong danh sách khách hàng! Vui lòng kiểm tra lại thông tin.", "Thông báo",
+                                           MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+                try
+                {
+                    KhachHang khachHang1 = new KhachHang();
+                    khachHang1.MaKH = KhachHangBUS.Instance.GetMaKHNext();
+                    khachHang1.TenKH = ten;
+                    khachHang1.QuocTich = quocTich;
+                    khachHang1.CCCD_Passport = cccd;
+                    khachHang1.SDT = sdt;
+                    khachHang1.GioiTinh = gioiTinh.Trim(' ');
+                    khachHang1.Email = email;   // GÁN EMAIL VÀO KHÁCH HÀNG
+
+                    KhachHangBUS.Instance.UpdateOrAdd(khachHang1);
+
+                    this.formDanhSachKhachHang.LoadAllGrid();
+                    CTMessageBox.Show("Thêm thông tin thành công.", "Thông báo",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    this.Close();
+                }
+                catch (Exception)
+                {
+                    CTMessageBox.Show("Đã xảy ra lỗi! Vui lòng thử lại.", "Thông báo",
+                                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                finally
+                {
+                }
+            }
+            else
+                CTMessageBox.Show("Vui lòng nhập đầy đủ thông tin khách hàng.", "Thông báo",
+                                MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void ctTextBoxName__TextChanged(object sender, EventArgs e)
+        {
+            TextBox textBoxName = sender as TextBox;
+            textBoxName.KeyPress += TextBoxName_KeyPress;
+        }
+
+        private void TextBoxName_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            TextBoxType.Instance.TextBoxNotNumber(e);
+        }
+
+        private void FormThemKhachHang_Load(object sender, EventArgs e)
+        {
+            this.ActiveControl = labelThemKhachHang;
+        }
+
+        private void ctTextBoxCMND__TextChanged(object sender, EventArgs e)
+        {
+            TextBox textBoxCCCD = sender as TextBox;
+            textBoxCCCD.MaxLength = 12;
+            textBoxCCCD.KeyPress += TextBoxCCCD_KeyPress;
+        }
+
+        private void TextBoxCCCD_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            TextBoxType.Instance.TextBoxOnlyNumber(e);
+        }
+
+        private void ctTextBoxSDT__TextChanged(object sender, EventArgs e)
+        {
+            TextBox textBoxSDT = sender as TextBox;
+            textBoxSDT.MaxLength = 10;
+            textBoxSDT.KeyPress += TextBoxSDT_KeyPress;
+        }
+
+        private void TextBoxSDT_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            TextBoxType.Instance.TextBoxOnlyNumber(e);
+        }
+
+        private void ctTextBoxQuocTich__TextChanged(object sender, EventArgs e)
+        {
+            TextBox textBoxQuocTich = sender as TextBox;
+            textBoxQuocTich.KeyPress += TextBoxQuocTich_KeyPress;
+        }
+
+        private void TextBoxQuocTich_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            TextBoxType.Instance.TextBoxNotNumber(e);
+        }
+
+        private void pictureBox4_Click(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
