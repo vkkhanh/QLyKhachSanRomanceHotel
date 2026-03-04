@@ -3,13 +3,6 @@
 ## 📌 Giới thiệu
 
 Hệ thống Quản lý Khách sạn Romance Hotel được xây dựng nhằm hỗ trợ toàn diện các nghiệp vụ như quản lý phòng, đặt phòng, khách hàng, nhân viên, dịch vụ, hóa đơn, thống kê doanh thu và sao lưu – phục hồi dữ liệu. Giao diện được thiết kế trực quan, dễ sử dụng, phù hợp với môi trường làm việc thực tế tại khách sạn.
-## 🎯 Mục tiêu dự án
-
-- Xây dựng hệ thống quản lý khách sạn hiện đại, ổn định và dễ sử dụng
-- Tối ưu hóa quy trình đặt phòng và thanh toán
-- Chuẩn hóa cơ sở dữ liệu đảm bảo tính toàn vẹn và bảo mật
-- Hỗ trợ thống kê – báo cáo nhanh chóng, chính xác
-- Nâng cao trải nghiệm làm việc của nhân viên và trải nghiệm lưu trú của khách hàng
 
 
 ## 🛠 Công nghệ sử dụng
@@ -92,11 +85,9 @@ Mỗi vai trò có quyền truy cập chức năng khác nhau nhằm đảm bả
 
 1. Mở file `.sln` bằng Visual Studio
 
-2. Cấu hình chuỗi kết nối SQL Server trong file cấu hình
+2. Restore database QLKS_RomanceHotel.bak
 
-3. Restore database
-
-4. Chạy chương trình
+3. Chạy chương trình
 
 ---
 
